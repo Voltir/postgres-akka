@@ -4,6 +4,8 @@
 
 # Home page
 GET     /                           controllers.Application.index
+GET     /socket                     controllers.Application.socket
+GET     /jsroutes                   controllers.Application.javascriptRoutes
 
 #GET Hacks for Testing
 GET /user/create/:gamertag          controllers.Application.create(gamertag)

@@ -1,16 +1,27 @@
 package example
 
+import org.scalajs.dom.{MessageEvent, Event, WebSocket}
+
 import scala.scalajs.js
 import js.Dynamic.{ global => g }
-import shared.SharedMessages
+import rx._
+import org.scalajs.dom
+import scalatags.JsDom.all._
 
 object ScalaJSExample extends js.JSApp {
-  def main(): Unit = {
-    g.document.getElementById("scalajsShoutOut").textContent = SharedMessages.itWorks
+
+  private var socket: WebSocket = _
+
+
+  private def setupSocket() {
+    socket = new WebSocket(g.jsRoutes.controllers.Application.socket().webSocketURL(false).asInstanceOf[String])
+    socket.onopen = { (evt: Event) => socket.send("SETUP COMPLETE!") }
+    socket.onmessage = { (evt: MessageEvent) => println(evt.data)}
+
   }
 
-  /** Computes the square of an integer.
-   *  This demonstrates unit testing.
-   */
-  def square(x: Int): Int = x*x
+  def main(): Unit = {
+    setupSocket()
+    dom.document.getElementById("main-content").appendChild(h1("Hello").render)
+  }
 }
