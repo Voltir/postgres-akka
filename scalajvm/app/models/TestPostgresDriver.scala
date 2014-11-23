@@ -29,13 +29,14 @@ trait PgUpickleSupport extends com.github.tminglei.slickpg.json.PgJsonExtensions
   }
 }
 
-trait GameTimePostgresDriver extends PostgresDriver
-with PgArraySupport
-with PgDateSupport
-with PgRangeSupport
-with PgHStoreSupport
-with PgSearchSupport
-with PgUpickleSupport {
+trait NotifyTestPostgresDriver extends PostgresDriver
+    with PgEnumSupport
+    with PgArraySupport
+    with PgDateSupport
+    with PgRangeSupport
+    with PgHStoreSupport
+    with PgSearchSupport
+    with PgUpickleSupport {
 
   override lazy val Implicit = new ImplicitsPlus {}
   override val simple = new SimpleQLPlus{}
@@ -53,4 +54,4 @@ with PgUpickleSupport {
   with SearchAssistants
 }
 
-object GameTimePostgresDriver extends GameTimePostgresDriver
+object GameTimePostgresDriver extends NotifyTestPostgresDriver
