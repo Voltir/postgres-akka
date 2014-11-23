@@ -19,7 +19,7 @@ trait UserLogicalClockComponent {
     def uid = column[UserId]("user_id",O.PrimaryKey)
     def self = column[Long]("self",O.NotNull)
     def relatedUsers = column[Long]("related",O.NotNull)
-    def gameSessions = column[Long]("gamez",O.NotNull)
+    def gameSessions = column[Long]("game",O.NotNull)
     def * = (uid,self,relatedUsers,gameSessions) <> (UserLogicalClockSQL.tupled,UserLogicalClockSQL.unapply)
   }
 

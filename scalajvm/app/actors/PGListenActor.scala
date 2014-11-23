@@ -60,16 +60,17 @@ protected class PGNotifyConnection(notifier: ActorRef) extends Thread {
     isRunning = false
   }
 
-
-
   private def execute(statement: String) {
+    println(s"EXECUTING $statement")
     val stmt = javaConn.createStatement
     stmt.execute(statement)
     stmt.close()
   }
 
   override def run() {
-    execute(s"LISTEN akka_debug")
+   execute(s"LISTEN akka_debug")
+   execute(s"LISTEN _c1")
+   execute(s"LISTEN _c2")
     while(isRunning) {
       try {
         val fromPostgres = psqlConn.getNotifications
