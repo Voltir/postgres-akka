@@ -6,6 +6,7 @@
 GET     /                           controllers.Application.index
 GET     /socket                     controllers.Application.socket
 GET     /jsroutes                   controllers.Application.javascriptRoutes
+POST    /autoroute/*segment         controllers.Application.autoroute(segment)
 
 #GET Hacks for Testing
 GET /user/create/:gamertag          controllers.Application.create(gamertag)

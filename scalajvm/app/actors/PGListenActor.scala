@@ -2,13 +2,16 @@ package actors
 
 
 import akka.actor._
+import shared.users.UserId
 
 import scala.util.Try
 
 class PGListenActor extends Actor with ActorLogging {
   import actors.PGListenActor._
 
-  lazy val conn = new PGNotifyConnection(self)
+  val IDENTIFIER = "listener1"
+
+  lazy val conn = new PGNotifyConnection(self, IDENTIFIER)
 
   override def preStart() = {
     println("STARTING LISTENER AKKA!!!")
@@ -31,6 +34,18 @@ class PGListenActor extends Actor with ActorLogging {
         case scala.util.Failure(e) => println("COULD NOT PARSE RESULT!",e)
       }
     }
+
+    case UserOnline(uid,ref) => {
+      context.watch(ref)
+      conn.online(uid)
+    }
+
+    case Terminated(ref) => {
+      UserActor.uidOf(ref.path).map { uid =>
+        conn.offline(uid)
+      }
+    }
+
     case _ => println("PGLISTENACTOR -- ERROR!")
   }
 }
@@ -39,15 +54,16 @@ object PGListenActor {
 
   val name = "pg-listener"
 
+  //TODO: Make a supervisor
+  case class UserOnline(uid: UserId, ref: ActorRef)
+
   //Message Types
   case class PGNotified(channel: String, payload: String, pid: Int)
 
   def props: Props = Props(new PGListenActor)
 }
 
-
-
-protected class PGNotifyConnection(notifier: ActorRef) extends Thread {
+protected class PGNotifyConnection(notifier: ActorRef, channel: String) extends Thread {
   import java.sql.DriverManager
   import org.postgresql.PGConnection
 
@@ -60,7 +76,15 @@ protected class PGNotifyConnection(notifier: ActorRef) extends Thread {
     isRunning = false
   }
 
-  private def execute(statement: String) {
+  def online(uid: UserId) = {
+    execute(s"INSERT INTO akka_live_users VALUES ('$channel',${uid.id})")
+  }
+
+  def offline(uid: UserId) = {
+    execute(s"DELETE FROM akka_live_users WHERE user_id = ${uid.id}")
+  }
+
+  private def execute(statement: String) = {
     println(s"EXECUTING $statement")
     val stmt = javaConn.createStatement
     stmt.execute(statement)
@@ -69,8 +93,6 @@ protected class PGNotifyConnection(notifier: ActorRef) extends Thread {
 
   override def run() {
    execute(s"LISTEN akka_debug")
-   execute(s"LISTEN _c1")
-   execute(s"LISTEN _c2")
     while(isRunning) {
       try {
         val fromPostgres = psqlConn.getNotifications

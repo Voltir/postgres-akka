@@ -28,6 +28,10 @@ trait UserComponent {
       (query returning query) += UserSQL(UserId(-1),gamertag,foo)
     }
 
+    def all()(implicit s: Session): List[UserSQL] = {
+      query.list
+    }
+
     def modifyFoo(uid: UserId, foo: String)(implicit s: Session): Int = {
       query.filter(_.uid === uid).map(_.foo).update(foo)
     }

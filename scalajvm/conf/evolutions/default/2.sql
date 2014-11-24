@@ -40,7 +40,7 @@ $$ LANGUAGE plpgsql;
 --Todo
 
 -- Akka 'Live' Table
-CREATE UNLOGGED TABLE akka_live_users ("user_id" BIGINT NOT NULL);
+CREATE UNLOGGED TABLE akka_live_users ("channel" VARCHAR(64), "user_id" BIGINT NOT NULL);
 
 -- Cache Consistency For User Table
 CREATE OR REPLACE FUNCTION user_modified_sync_clocks()
