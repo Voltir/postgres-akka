@@ -41,7 +41,21 @@ END
 $$ LANGUAGE plpgsql;
 
 --Akka Tell Social (self and friends who are live)
---Todo
+CREATE OR REPLACE FUNCTION akka_tell_live_friends(self_uid bigint, kind text, args text[])
+  RETURNS INT AS $$
+BEGIN
+  PERFORM pg_notify(live.channel, payload)
+  FROM
+    akka_live_users AS live
+      INNER JOIN notify_akka_social AS social ON (live.user_id = social.uid_b OR live.user_id = social.uid_a),
+    akka_payload(kind, array_append(args,key_val('target',live.user_id::text))) AS payload
+  WHERE
+    (social.uid_a = self_uid AND social.uid_b = live.user_id)
+  OR
+    (social.uid_b = self_uid AND social.uid_a = live.user_id);;
+  RETURN 1;;
+END
+$$ LANGUAGE plpgsql;
 
 -- Akka 'Live' Table
 CREATE UNLOGGED TABLE akka_live_users ("channel" VARCHAR(64), "user_id" BIGINT NOT NULL);
@@ -91,7 +105,8 @@ EXECUTE PROCEDURE user_modified_trigger();
 CREATE OR REPLACE FUNCTION social_modified_trigger()
   RETURNS TRIGGER AS $$
 DECLARE
-  mah_args text[];;
+  mah_args_A text[];;
+  mah_args_B text[];;
   lclock_A bigint;;
   lclock_B bigint;;
 BEGIN
@@ -123,14 +138,20 @@ BEGIN
 
   --Create Akka Payload Args
   SELECT ARRAY[
-    key_val('uid_a',NEW.uid_a::text),
-    key_val('uid_b',NEW.uid_b::text),
+    key_val('self',NEW.uid_a::text),
+    key_val('other',NEW.uid_b::text),
     key_val('relation',NEW.relation::text),
-    key_val('lclock_a',lclock_A::text),
-    key_val('lclock_b',lclock_B::text)
-  ] INTO mah_args;;
-  PERFORM akka_tell_debug('social_modified', mah_args);;
-  --PERFORM akka_tell_live_self(NEW.user_id,'user_modified',mah_args);;
+    key_val('lclock',lclock_A::text)
+  ] INTO mah_args_A;;
+  PERFORM akka_tell_live_self(NEW.uid_a,'social_modified',mah_args_A);;
+
+  SELECT ARRAY[
+    key_val('self',NEW.uid_b::text),
+    key_val('other',NEW.uid_a::text),
+    key_val('relation',NEW.relation::text),
+    key_val('lclock',lclock_B::text)
+  ] INTO mah_args_B;;
+  PERFORM akka_tell_live_self(NEW.uid_b,'social_modified',mah_args_B);;
   RETURN NULL;;
 END
 $$ LANGUAGE plpgsql;
@@ -150,5 +171,5 @@ DROP FUNCTION IF EXISTS  akka_tell_live_self(self_uid bigint, kind text, args te
 DROP TABLE IF EXISTS akka_live_users;
 DROP TRIGGER IF EXISTS attached_user_modified_trigger ON notify_akka_users;
 DROP TRIGGER IF EXISTS attached_social_modified_trigger ON notify_akka_social;
-DROP FUNCTION IF EXISTS social_modified_trigger()
-DROP FUNCTION IF EXISTS user_modified_trigger()
+DROP FUNCTION IF EXISTS social_modified_trigger();
+DROP FUNCTION IF EXISTS user_modified_trigger();

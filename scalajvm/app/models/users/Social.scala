@@ -39,9 +39,13 @@ trait SocialComponent {
     }
 
     def request(requester: UserId, requestee: UserId)(implicit s: Session): Option[SocialSQL] = {
+      println("REQUEST??")
+      println(order(requester, requestee))
       order(requester,requestee).flatMap { case (a, b) =>
+        println(query.filter(r => r.a === a && r.b === b).exists.run)
         if (query.filter(r => r.a === a && r.b === b).exists.run) None
         else {
+          println("HERE!")
           val rel: RelationSQL =
             if (b == requester) BRequestedA
             else ARequestedB
@@ -52,10 +56,16 @@ trait SocialComponent {
     }
 
     def accept(requester: UserId, requestee: UserId)(implicit s: Session): Int = {
+      println("ACCEPT??")
+      println(order(requester, requestee))
       order(requester,requestee).map { case (a, b) =>
+        println(a,b)
+
         val rel: RelationSQL =
           if (b == requester) BRequestedA
           else ARequestedB
+        println(rel)
+        println(query.filter(r => r.a === a && r.b === b && r.r === rel).list)
         query
           .filter(r => r.a === a && r.b === b && r.r === rel)
           .map(_.r)

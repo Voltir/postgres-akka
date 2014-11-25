@@ -34,7 +34,7 @@ object ImplAdminAPI extends AdminAPI {
 
   def makeFriends(a: UserId, b: UserId): Unit = Session { implicit s =>
     dao.usersocial.request(a,b)
-    dao.usersocial.accept(b,a)
+    dao.usersocial.accept(a,b)
   }
 
   def makeUnfriends(a: UserId, b: UserId): Unit = Session { implicit s =>
