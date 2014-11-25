@@ -13,6 +13,8 @@ class PGListenActor extends Actor with ActorLogging {
 
   lazy val conn = new PGNotifyConnection(self, IDENTIFIER)
 
+  private var debugger: Option[ActorRef] = None
+
   override def preStart() = {
     println("STARTING LISTENER AKKA!!!")
     conn.start()
@@ -20,6 +22,10 @@ class PGListenActor extends Actor with ActorLogging {
 
   override def postStop = {
     conn.shutdown()
+  }
+
+  private def handleDebug(args: Map[String,String]) = {
+    debugger.map { _ ! PGDebugEvent(args) }
   }
 
   override def receive = {
@@ -30,6 +36,7 @@ class PGListenActor extends Actor with ActorLogging {
       println(":::: DEBUG ::::",channel,payload)
       val result = Try(upickle.read[(String,Map[String,String])](payload))
       result match {
+        case scala.util.Success((`debug_channel`,args)) => handleDebug(args)
         case scala.util.Success((kind,args)) => println("SUCCESS!",kind,args)
         case scala.util.Failure(e) => println("COULD NOT PARSE RESULT!",e)
       }
@@ -46,6 +53,10 @@ class PGListenActor extends Actor with ActorLogging {
       }
     }
 
+    case DebugRef(ref) => {
+      debugger = Option(ref)
+    }
+
     case _ => println("PGLISTENACTOR -- ERROR!")
   }
 }
@@ -54,8 +65,14 @@ object PGListenActor {
 
   val name = "pg-listener"
 
+  val debug_channel = "akka_debug"
+
   //TODO: Make a supervisor
   case class UserOnline(uid: UserId, ref: ActorRef)
+  case class DebugRef(ref: ActorRef)
+
+  //This message will be sent to the debugger ref
+  case class PGDebugEvent(args: Map[String,String])
 
   //Message Types
   case class PGNotified(channel: String, payload: String, pid: Int)
@@ -92,7 +109,8 @@ protected class PGNotifyConnection(notifier: ActorRef, channel: String) extends 
   }
 
   override def run() {
-   execute(s"LISTEN akka_debug")
+    execute(s"LISTEN ${PGListenActor.debug_channel}")
+    execute(s"LISTEN $channel")
     while(isRunning) {
       try {
         val fromPostgres = psqlConn.getNotifications

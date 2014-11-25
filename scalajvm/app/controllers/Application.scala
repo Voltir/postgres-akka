@@ -1,7 +1,7 @@
 package controllers
 
 import shared.AdminAPI
-import shared.users.User
+import shared.users.{UserId, User}
 import upickle._
 
 import actors.{TestWebSocketActor, PGListenActor}
@@ -23,7 +23,22 @@ object ImplAdminAPI extends AdminAPI {
   }
 
   def allUsers(): List[User] = Session { implicit s =>
-    dao.users.all().map(sql => User(sql.uid,sql.gamertag))
+    dao.users.all().map(sql => User(sql.uid,sql.gamertag,sql.foo))
+  }
+
+  def allFriendsHACK(): Map[UserId,List[UserId]] = Session { implicit s =>
+    allUsers().foldLeft(Map[UserId,List[UserId]]()) { case (acc, user) =>
+      acc + (user.uid -> dao.usersocial.friends(user.uid))
+    }
+  }
+
+  def makeFriends(a: UserId, b: UserId): Unit = Session { implicit s =>
+    dao.usersocial.request(a,b)
+    dao.usersocial.accept(b,a)
+  }
+
+  def makeUnfriends(a: UserId, b: UserId): Unit = Session { implicit s =>
+    dao.usersocial.remove(a,b)
   }
 }
 

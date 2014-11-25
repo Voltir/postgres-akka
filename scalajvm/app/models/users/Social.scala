@@ -32,48 +32,54 @@ trait SocialComponent {
   object usersocial {
     val query = TableQuery[SocialTable]
 
-    private def order(a: UserId, b: UserId): (UserId,UserId) = {
-      if(a.id < b.id) (a,b) else (b,a)
+    private def order(a: UserId, b: UserId): Option[(UserId,UserId)] = {
+      if(a == b) None
+      else if(a.id < b.id) Option((a,b))
+      else Option((b,a))
     }
 
     def request(requester: UserId, requestee: UserId)(implicit s: Session): Option[SocialSQL] = {
-      val (a,b) = order(requester,requestee)
-      if(query.filter(r => r.a === a && r.b === b).exists.run) None
-      else {
-        val rel: RelationSQL =
-          if( b == requester) BRequestedA
-          else ARequestedB
-        val result = (query returning query) += SocialSQL(a,b,rel)
-        Option(result)
+      order(requester,requestee).flatMap { case (a, b) =>
+        if (query.filter(r => r.a === a && r.b === b).exists.run) None
+        else {
+          val rel: RelationSQL =
+            if (b == requester) BRequestedA
+            else ARequestedB
+          val result = (query returning query) += SocialSQL(a, b, rel)
+          Option(result)
+        }
       }
     }
 
     def accept(requester: UserId, requestee: UserId)(implicit s: Session): Int = {
-      val (a,b) = order(requester,requestee)
-      val rel: RelationSQL =
-        if( b == requester) BRequestedA
-        else ARequestedB
-      query
-        .filter(r => r.a === a && r.b === b && r.r === rel)
-        .map(_.r)
-        .update(Friends)
+      order(requester,requestee).map { case (a, b) =>
+        val rel: RelationSQL =
+          if (b == requester) BRequestedA
+          else ARequestedB
+        query
+          .filter(r => r.a === a && r.b === b && r.r === rel)
+          .map(_.r)
+          .update(Friends)
+      } getOrElse 0
     }
 
     def reject(requester: UserId, requestee: UserId)(implicit s: Session): Int = {
-      val (a,b) = order(requester,requestee)
-      val rel: RelationSQL =
-        if( b == requester) BRequestedA
-        else ARequestedB
-      query
-        .filter(r => r.a === a && r.b === b && r.r === rel)
-        .delete
+      order(requester,requestee).map { case (a, b) =>
+        val rel: RelationSQL =
+          if (b == requester) BRequestedA
+          else ARequestedB
+        query
+          .filter(r => r.a === a && r.b === b && r.r === rel)
+          .delete
+      } getOrElse 0
     }
 
     def remove(u1: UserId, u2: UserId)(implicit s: Session): Int = {
-      val (a,b) = order(u1,u2)
-      query
-        .filter(r => r.a === a && r.b === b && r.r === (Friends:RelationSQL))
-        .delete
+      order(u1,u2).map { case (a, b) =>
+        query
+          .filter(r => r.a === a && r.b === b && r.r === (Friends: RelationSQL))
+          .delete
+      } getOrElse 0
     }
 
     def pending(uid: UserId)(implicit s: Session): List[UserId] = {

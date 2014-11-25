@@ -4,5 +4,6 @@ case class UserId(id: Long)
 
 case class User(
   uid: UserId,
-  gamertag: String
+  gamertag: String,
+  some_foo: String
 )
